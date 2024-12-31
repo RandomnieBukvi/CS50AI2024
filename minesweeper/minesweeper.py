@@ -183,17 +183,6 @@ class MinesweeperAI():
             sentence.mark_safe(cell)
 
     def add_knowledge(self, cell, count):
-        print("BEFORE!!!!!!!!!!!!")
-        print(f"move: {cell}, count: {count}")
-        print(f"moves made: {self.moves_made}")
-        print(f"safe: {self.safes},\n mine: {self.mines}")
-
-        print()
-        print("------------Knowledge----------------")
-        for sentence in self.knowledge:
-            print(sentence)
-        print("--------------------------------------")
-        print()
 
         """
         Called when the Minesweeper board tells us, for a given
@@ -236,12 +225,10 @@ class MinesweeperAI():
         #                if it can be concluded based on the AI's knowledge base
         for sentence in self.knowledge:
             mines = sentence.known_mines().copy()
-            print(f"mines: {mines}")
             for mine in mines:
                 self.mark_mine(mine)
 
             safes = sentence.known_safes().copy()
-            print(f"safes: {safes}")
             for safe in safes:
                 self.mark_safe(safe)
         # extra checking
@@ -266,28 +253,11 @@ class MinesweeperAI():
                 if s1 == s2:
                     continue
                 if s1.cells <= s2.cells:
-                    print(f"({s2}) - ({s1})")
                     new_cells = s2.cells - s1.cells
                     new_count = s2.count - s1.count
                     new_sentence = Sentence(new_cells, new_count)
                     new_knowledge.append(new_sentence)
-        print("---new knowledge---")
-        for sentence in new_knowledge:
-            print(sentence)
-        print("-------------------")
         self.knowledge.extend(new_knowledge)
-
-        print("AFTER!!!!!!!!!!!!")
-        print(f"move: {cell}")
-        print(f"moves made: {self.moves_made}")
-        print(f"safe: {self.safes},\n mine: {self.mines}")
-
-        print()
-        print("------------Knowledge----------------")
-        for sentence in self.knowledge:
-            print(sentence)
-        print("--------------------------------------")
-        print()
         # raise NotImplementedError
 
     def make_safe_move(self):
@@ -300,11 +270,9 @@ class MinesweeperAI():
         and self.moves_made, but should not modify any of those values.
         """
         safe_moves = self.safes - self.moves_made
-        print(f"safe moves             {safe_moves}")
         if not safe_moves:
             return None
         move = safe_moves.pop()
-        print(f"making safe move: {move}")
         return move
         # raise NotImplementedError
 
@@ -320,10 +288,8 @@ class MinesweeperAI():
             for j in range(self.width):
                 all_cells.add((i, j))
         possible_moves = all_cells - self.moves_made - self.mines
-        print(f"posiblle moves        {possible_moves}")
         if not possible_moves:
             return None
         move = possible_moves.pop()
-        print(f"making random move: {move}")
         return move
         # raise NotImplementedError
