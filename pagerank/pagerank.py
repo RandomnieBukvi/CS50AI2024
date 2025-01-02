@@ -57,7 +57,22 @@ def transition_model(corpus, page, damping_factor):
     linked to by `page`. With probability `1 - damping_factor`, choose
     a link at random chosen from all pages in the corpus.
     """
-    raise NotImplementedError
+
+    pd = {cpage: 0 for cpage in corpus}
+    outgoing_links = corpus[page]
+    if len(outgoing_links) == 0:
+        probability = 1 / len(corpus)
+        for cpage in corpus:
+            pd[cpage] += probability
+        return pd
+
+    additional = (1 - damping_factor) / len(corpus)
+    probability = damping_factor / len(outgoing_links)
+    for pg in outgoing_links:
+        pd[pg] = probability
+    for cpage in corpus:
+        pd[cpage] += additional
+    return pd
 
 
 def sample_pagerank(corpus, damping_factor, n):
@@ -69,7 +84,17 @@ def sample_pagerank(corpus, damping_factor, n):
     their estimated PageRank value (a value between 0 and 1). All
     PageRank values should sum to 1.
     """
-    raise NotImplementedError
+    page_rank = {cpage: 0 for cpage in corpus}
+    current_page = random.choice(list(corpus.keys()))
+    for i in range(n):
+        page_rank[current_page] += 1
+        pd = transition_model(corpus, current_page, damping_factor)
+        pages = list(pd.keys())
+        probabilities = list(pd.values())
+        current_page = random.choices(pages, weights=probabilities, k=1)[0]
+    for page in page_rank:
+        page_rank[page] /= n
+    return page_rank
 
 
 def iterate_pagerank(corpus, damping_factor):
@@ -81,7 +106,28 @@ def iterate_pagerank(corpus, damping_factor):
     their estimated PageRank value (a value between 0 and 1). All
     PageRank values should sum to 1.
     """
-    raise NotImplementedError
+    for cpage in corpus:
+        if len(corpus[cpage]) == 0:
+            corpus[cpage] = corpus.keys()
+    initial_pr = 1 / len(corpus)
+    page_rank = {cpage: initial_pr for cpage in corpus}
+
+    num_links = {cpage: len(corpus[cpage]) for cpage in corpus}
+    ingoing_links = {cpage1: {cpage2 for cpage2 in corpus if cpage1 in corpus[cpage2]} for cpage1 in corpus}
+
+    random_pr = (1 - damping_factor) / len(page_rank)
+    big_difference = True
+    while big_difference:
+        max_diff = -1
+        for page in page_rank:
+            new_pr = random_pr
+            for link in ingoing_links[page]:
+                new_pr += (page_rank[link] / num_links[link]) * damping_factor
+            max_diff = max(abs(new_pr - page_rank[page]), max_diff)
+            page_rank[page] = new_pr
+        if max_diff < 0.001:
+            big_difference = False
+    return page_rank
 
 
 if __name__ == "__main__":
