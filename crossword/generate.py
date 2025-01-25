@@ -114,9 +114,9 @@ class CrosswordCreator():
         Return True if a revision was made to the domain of `x`; return
         False if no revision was made.
         """
-        overlap = self.crossword.overlaps[x, y]  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        overlap = self.crossword.overlaps[x, y]
         if not overlap:
-            return False  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            return False
         x_index, y_index = overlap
         revised = False
         x_domain = self.domains[x].copy()
@@ -142,7 +142,6 @@ class CrosswordCreator():
         Return True if arc consistency is enforced and no domains are empty;
         return False if one or more domains end up empty.
         """
-
         def dequeue():
             if arcs:
                 return arcs.pop(0)
@@ -150,7 +149,7 @@ class CrosswordCreator():
                 return None
 
         if not arcs:
-            arcs = [arc for arc, overlap in self.crossword.overlaps.items() if overlap]
+            arcs = list(self.crossword.overlaps.keys())
         while len(arcs) != 0:
             x, y = dequeue()
             if self.revise(x, y):
@@ -168,9 +167,6 @@ class CrosswordCreator():
         """
         if set(assignment) != self.crossword.variables:
             return False
-        # for _, val in assignment:  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        #     if not val:
-        #         return False
         return True
         # raise NotImplementedError
 
@@ -179,21 +175,20 @@ class CrosswordCreator():
         Return True if `assignment` is consistent (i.e., words fit in crossword
         puzzle without conflicting characters); return False otherwise.
         """
-        complete_assignments = {var: val for var, val in assignment.items() if val}
-        for var, val in complete_assignments:
+        for var, val in assignment.items():
             if var.length != len(val):
                 return False
-        for var1, val1 in complete_assignments:
-            for var2, val2 in complete_assignments:
+        for var1, val1 in assignment.items():
+            for var2, val2 in assignment.items():
                 if var1 == var2:
                     continue
                 if val1 == val2:
                     return False
         neighbors = {arc: overlap for arc, overlap in self.crossword.overlaps.items()
-                     if overlap and arc[0] in complete_assignments and arc[1] in complete_assignments}
+                     if overlap and arc[0] in assignment and arc[1] in assignment}
         for arc, overlap in neighbors.items():
-            n1_val = complete_assignments[arc[0]]
-            n2_val = complete_assignments[arc[1]]
+            n1_val = assignment[arc[0]]
+            n2_val = assignment[arc[1]]
             n1_index, n2_index = overlap
             if n1_val[n1_index] != n2_val[n2_index]:
                 return False
@@ -207,7 +202,25 @@ class CrosswordCreator():
         The first value in the list, for example, should be the one
         that rules out the fewest values among the neighbors of `var`.
         """
-        return self.domains[var]  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        def get_eliminated_choices(character, index, neighbor):
+            neighbor_domain = self.domains[neighbor]
+            eliminated = 0
+            for word in neighbor_domain:
+                if word[index] != character:
+                    eliminated += 1
+            return eliminated
+
+        neighbors = {neighbor for neighbor in self.crossword.neighbors(var) if neighbor not in assignment}
+        domains_constrains = {}
+        for domain in self.domains[var]:
+            eliminated_choices = 0
+            for neighbor in neighbors:
+                var_index, neighbor_index = self.crossword.overlaps[var, neighbor]
+                var_char = domain[var_index]
+                eliminated_choices += get_eliminated_choices(var_char, neighbor_index, neighbor)
+            domains_constrains[domain] = eliminated_choices
+        ordered_domain = sorted(domains_constrains, key=lambda k: domains_constrains[k])
+        return ordered_domain
         # raise NotImplementedError
 
     def select_unassigned_variable(self, assignment):
@@ -218,10 +231,22 @@ class CrosswordCreator():
         degree. If there is a tie, any of the tied variables are acceptable
         return values.
         """
-        for var in self.crossword.variables:
-            if var not in assignment or not assignment.get(var):
-                return var
-        return None
+        unassigned_variables = {var for var in self.crossword.variables if var not in assignment}
+        var_vals = dict()
+        for var in unassigned_variables:
+            remaining_vals = len(self.domains[var])
+            var_vals[var] = remaining_vals
+        ordered_var_vals = sorted(var_vals, key=lambda k: var_vals[k])
+        min_remaining_vals = [var for var in ordered_var_vals if var == ordered_var_vals[0]]
+        if len(min_remaining_vals) == 1:
+            return min_remaining_vals[0]
+
+        degrees = dict()
+        for var in min_remaining_vals:
+            degree = len(self.crossword.neighbors(var))
+            degrees[var] = degree
+        ordered_degrees = sorted(degrees, key=lambda k: degrees[k], reverse=True)
+        return ordered_degrees[0]
         # raise NotImplementedError
 
     def backtrack(self, assignment):
@@ -237,12 +262,16 @@ class CrosswordCreator():
             return assignment
         var = self.select_unassigned_variable(assignment)
         for val in self.order_domain_values(var, assignment):
-            assignment[var] = val
-            result = self.backtrack(assignment)
-            if result:
-                return result
-            assignment.pop(var)
-        return False
+            new_assignment = assignment.copy()
+            new_assignment[var] = val
+
+            if self.consistent(new_assignment):
+                assignment[var] = val
+                result = self.backtrack(assignment)
+                if result:
+                    return result
+                assignment.pop(var)
+        return None
         # raise NotImplementedError
 
 
