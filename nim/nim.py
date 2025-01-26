@@ -101,13 +101,15 @@ class NimAI():
         Return the Q-value for the state `state` and the action `action`.
         If no Q-value exists yet in `self.q`, return 0.
         """
-        raise NotImplementedError
+        state = tuple(state)
+        return self.q.get((state, action), 0)
+        # raise NotImplementedError
 
     def update_q_value(self, state, action, old_q, reward, future_rewards):
         """
         Update the Q-value for the state `state` and the action `action`
         given the previous Q-value `old_q`, a current reward `reward`,
-        and an estiamte of future rewards `future_rewards`.
+        and an estimate of future rewards `future_rewards`.
 
         Use the formula:
 
@@ -118,7 +120,10 @@ class NimAI():
         `alpha` is the learning rate, and `new value estimate`
         is the sum of the current reward and estimated future rewards.
         """
-        raise NotImplementedError
+        state = tuple(state)
+        new_value_estimate = reward + future_rewards
+        self.q[(state, action)] = old_q + self.alpha * (new_value_estimate - old_q)
+        # raise NotImplementedError
 
     def best_future_reward(self, state):
         """
@@ -130,7 +135,12 @@ class NimAI():
         Q-value in `self.q`. If there are no available actions in
         `state`, return 0.
         """
-        raise NotImplementedError
+        available_actions = Nim.available_actions(state)
+        if len(available_actions) == 0:
+            return 0
+        max_q = max([self.get_q_value(state, action) for action in available_actions])
+        return max_q
+        # raise NotImplementedError
 
     def choose_action(self, state, epsilon=True):
         """
@@ -147,7 +157,25 @@ class NimAI():
         If multiple actions have the same Q-value, any of those
         options is an acceptable return value.
         """
-        raise NotImplementedError
+        available_actions = Nim.available_actions(state)
+        if epsilon and random.random() <= self.epsilon:
+            return random.choice(list(available_actions))
+
+        best_q = max([self.get_q_value(state, action) for action in available_actions])
+
+        # возможно из за того что все q, которые есть в словаре(а не все есть), будут равны 0
+        # выбор действий будет ограничен только теми действиями, чьи q уже установлены, скорее всего на 0, хотя
+        # все остальные не установленные q тоже имеют значение 0.Чекни, исправь, хз
+        action = next(
+            (action for action in available_actions if self.get_q_value(state, action) == best_q),
+            random.choice(list(available_actions))
+        )
+        # дефолт сработает если словарь q-шек пустой,
+        # что значит все q равны 0
+
+        return action
+
+        # raise NotImplementedError
 
 
 def train(n):
